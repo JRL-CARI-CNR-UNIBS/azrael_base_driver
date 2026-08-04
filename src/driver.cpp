@@ -224,10 +224,10 @@ void azrael_mobile_driver::control_thread()
         v4in_ = (-cmdvel_x - cmdvel_y - (lxy * cmdvel_z)) * (1.0/radius);
 
 
-        this->pid_w1.setSetpoint(abs(v1in_));
-        this->pid_w2.setSetpoint(abs(v2in_));
-        this->pid_w3.setSetpoint(abs(v3in_));
-        this->pid_w4.setSetpoint(abs(v4in_));
+        this->pid_w1.setSetpoint(std::abs(v1in_));
+        this->pid_w2.setSetpoint(std::abs(v2in_));
+        this->pid_w3.setSetpoint(std::abs(v3in_));
+        this->pid_w4.setSetpoint(std::abs(v4in_));
 
         mtx_enc1.lock();
         this->vel_enc1_f = this->f_vel_1.filter(this->vel_enc1);
