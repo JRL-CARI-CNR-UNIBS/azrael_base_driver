@@ -231,18 +231,18 @@ void azrael_mobile_driver::control_thread()
 
         mtx_enc1.lock();
         this->vel_enc1_f = this->f_vel_1.filter(this->vel_enc1);
-        buffer_out[0] = this->vel_enc1;
+        double snap_enc1 = this->vel_enc1;
         mtx_enc1.unlock();
         mtx_enc2.lock();
-        buffer_out[1] = this->vel_enc2;
+        double snap_enc2 = this->vel_enc2;
         this->vel_enc2_f = this->f_vel_2.filter(this->vel_enc2);
         mtx_enc2.unlock();
         mtx_enc3.lock();
-        buffer_out[2] = this->vel_enc3;
+        double snap_enc3 = this->vel_enc3;
         this->vel_enc3_f = this->f_vel_3.filter(this->vel_enc3);
         mtx_enc3.unlock();
         mtx_enc4.lock();
-        buffer_out[3] = this->vel_enc4;
+        double snap_enc4 = this->vel_enc4;
         this->vel_enc4_f = this->f_vel_4.filter(this->vel_enc4);
         mtx_enc4.unlock();
         
@@ -264,10 +264,17 @@ void azrael_mobile_driver::control_thread()
 
         // std::cout << pwm1 << "," << pwm2 << "," << pwm3 << "," << pwm4 << "\n";
 
-        buffer_out[4] = ((v1in_ < 0) ? -1.0 : 1.0) * (pwm1 / (double)MAX_PWM_RANGE);
-		buffer_out[5] = ((v2in_ < 0) ? -1.0 : 1.0) * (pwm2 / (double)MAX_PWM_RANGE);
-		buffer_out[6] = ((v3in_ < 0) ? -1.0 : 1.0) * (pwm3 / (double)MAX_PWM_RANGE);
-		buffer_out[7] = ((v4in_ < 0) ? -1.0 : 1.0) * (pwm4 / (double)MAX_PWM_RANGE);
+        {
+            std::scoped_lock lock(mtx_buffer_out_);
+            buffer_out[0] = snap_enc1;
+            buffer_out[1] = snap_enc2;
+            buffer_out[2] = snap_enc3;
+            buffer_out[3] = snap_enc4;
+            buffer_out[4] = ((v1in_ < 0) ? -1.0 : 1.0) * (pwm1 / (double)MAX_PWM_RANGE);
+            buffer_out[5] = ((v2in_ < 0) ? -1.0 : 1.0) * (pwm2 / (double)MAX_PWM_RANGE);
+            buffer_out[6] = ((v3in_ < 0) ? -1.0 : 1.0) * (pwm3 / (double)MAX_PWM_RANGE);
+            buffer_out[7] = ((v4in_ < 0) ? -1.0 : 1.0) * (pwm4 / (double)MAX_PWM_RANGE);
+        }
 
         softPwmWrite (PWM_pin_1,  pwm1) ;
         softPwmWrite (PWM_pin_2,  pwm2) ;
@@ -278,7 +285,7 @@ void azrael_mobile_driver::control_thread()
         
         // time_sin = time_sin + (std::chrono::duration_cast<std::chrono::microseconds>(end_time - init_time).count() * 1e-6);
 
-        auto micros = std::chrono::microseconds::rep(CONTROL_LOOP_DT * 1e6) - std::chrono::duration_cast<std::chrono::microseconds>(end_time - init_time).count();
+        auto micros = static_cast<std::chrono::microseconds::rep>(CONTROL_LOOP_DT * 1e6) - std::chrono::duration_cast<std::chrono::microseconds>(end_time - init_time).count();
         if(micros > 0)
         {
             std::this_thread::sleep_for(std::chrono::microseconds(micros));
@@ -333,7 +340,12 @@ void azrael_mobile_driver::socket_send()
 	// buffer_out[3] = this->vel_enc4;
     // sendto(this->sockfd, (const void *)buffer_out, sizeof(double) * 4, MSG_WAITALL, (const struct sockaddr *) &servaddr, sizeof(servaddr)); 
     boost::system::error_code err;
-    auto sent = socket->send_to(boost::asio::buffer(buffer_out), remote_endpoint, 0, err);
+    double snapshot[8];
+    {
+        std::scoped_lock lock(mtx_buffer_out_);
+        std::copy(std::begin(buffer_out), std::end(buffer_out), std::begin(snapshot));
+    }
+    auto sent = socket->send_to(boost::asio::buffer(snapshot), remote_endpoint, 0, err);
 
     std::this_thread::sleep_for(std::chrono::microseconds(20000));
     // auto micros = 20000 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - init_time_udp).count();

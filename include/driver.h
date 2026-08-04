@@ -116,6 +116,7 @@ class azrael_mobile_driver
     double buffer_out[8] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
     // struct sockaddr_in     servaddr; 
     std::mutex mtx_receive_;
+    std::mutex mtx_buffer_out_;
     
     boost::asio::io_context io_context;
    
