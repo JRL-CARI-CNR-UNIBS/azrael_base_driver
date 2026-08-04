@@ -264,10 +264,10 @@ void azrael_mobile_driver::control_thread()
 
         // std::cout << pwm1 << "," << pwm2 << "," << pwm3 << "," << pwm4 << "\n";
 
-        buffer_out[4] = pwm1 / (double)MAX_PWM_RANGE;
-        buffer_out[5] = pwm2 / (double)MAX_PWM_RANGE;
-        buffer_out[6] = pwm3 / (double)MAX_PWM_RANGE;
-        buffer_out[7] = pwm4 / (double)MAX_PWM_RANGE;
+        buffer_out[4] = ((v1in_ < 0) ? -1.0 : 1.0) * (pwm1 / (double)MAX_PWM_RANGE);
+		buffer_out[5] = ((v2in_ < 0) ? -1.0 : 1.0) * (pwm2 / (double)MAX_PWM_RANGE);
+		buffer_out[6] = ((v3in_ < 0) ? -1.0 : 1.0) * (pwm3 / (double)MAX_PWM_RANGE);
+		buffer_out[7] = ((v4in_ < 0) ? -1.0 : 1.0) * (pwm4 / (double)MAX_PWM_RANGE);
 
         softPwmWrite (PWM_pin_1,  pwm1) ;
         softPwmWrite (PWM_pin_2,  pwm2) ;
