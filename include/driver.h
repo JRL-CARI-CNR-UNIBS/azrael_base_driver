@@ -56,21 +56,20 @@ constexpr double radius    = 0.1016;
 constexpr double lxy       = 0.71;
 // constexpr double lxy       = -0.11;
 
-double vx,vy,vw;
-
 class azrael_mobile_driver
 {
 
     // safety data
     int safe_ = 1;
 
+    // acceleration-limited body-frame velocity command (ramped toward buffer_in each control cycle)
     double cmdvel_x = 0.0;
     double cmdvel_y = 0.0;
     double cmdvel_z = 0.0;
-    
 
-    double vel_enc1, vel_enc2, vel_enc3, vel_enc4  = 0.0;
-    double vel_enc1_f, vel_enc2_f, vel_enc3_f, vel_enc4_f  = 0.0;
+
+    double vel_enc1 = 0.0, vel_enc2 = 0.0, vel_enc3 = 0.0, vel_enc4 = 0.0;
+    double vel_enc1_f = 0.0, vel_enc2_f = 0.0, vel_enc3_f = 0.0, vel_enc4_f = 0.0;
 
     Iir::Butterworth::LowPass<2> f_vel_1;
     Iir::Butterworth::LowPass<2> f_vel_2;
@@ -112,8 +111,9 @@ class azrael_mobile_driver
 
     //Socket
     // int sockfd; 
-    double buffer_in[3] = {0.0,0.0,0.0}; 
-    double buffer_out[4] = {0.0,0.0,0.0,0.0}; 
+    double buffer_in[3] = {0.0,0.0,0.0};
+    // [vel1,vel2,vel3,vel4,pwm1,pwm2,pwm3,pwm4] - vel in rad/s, pwm as commanded duty cycle fraction (0-1)
+    double buffer_out[8] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
     // struct sockaddr_in     servaddr; 
     std::mutex mtx_receive_;
     

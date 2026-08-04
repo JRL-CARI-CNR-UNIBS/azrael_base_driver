@@ -183,6 +183,20 @@ azrael_mobile_driver::azrael_mobile_driver()
 
 }
 
+static double rampToward(double current, double target, double max_delta)
+{
+    double delta = target - current;
+    if (delta > max_delta)
+    {
+        delta = max_delta;
+    }
+    else if (delta < -max_delta)
+    {
+        delta = -max_delta;
+    }
+    return current + delta;
+}
+
 void azrael_mobile_driver::control_thread()
 {
     srand (time(NULL));
@@ -199,11 +213,15 @@ void azrael_mobile_driver::control_thread()
 
         {
             std::scoped_lock lock(mtx_receive_);
-            v1in_ = ( buffer_in[0] - buffer_in[1] - (lxy * buffer_in[2])) * (1.0/radius);
-            v2in_ = (-buffer_in[0] - buffer_in[1] + (lxy * buffer_in[2])) * (1.0/radius);
-            v3in_ = ( buffer_in[0] - buffer_in[1] + (lxy * buffer_in[2])) * (1.0/radius);
-            v4in_ = (-buffer_in[0] - buffer_in[1] - (lxy * buffer_in[2])) * (1.0/radius);
+            cmdvel_x = rampToward(cmdvel_x, buffer_in[0], MAX_LIN_ACCEL * CONTROL_LOOP_DT);
+            cmdvel_y = rampToward(cmdvel_y, buffer_in[1], MAX_LIN_ACCEL * CONTROL_LOOP_DT);
+            cmdvel_z = rampToward(cmdvel_z, buffer_in[2], MAX_ANG_ACCEL * CONTROL_LOOP_DT);
         }
+
+        v1in_ = ( cmdvel_x - cmdvel_y - (lxy * cmdvel_z)) * (1.0/radius);
+        v2in_ = (-cmdvel_x - cmdvel_y + (lxy * cmdvel_z)) * (1.0/radius);
+        v3in_ = ( cmdvel_x - cmdvel_y + (lxy * cmdvel_z)) * (1.0/radius);
+        v4in_ = (-cmdvel_x - cmdvel_y - (lxy * cmdvel_z)) * (1.0/radius);
 
 
         this->pid_w1.setSetpoint(abs(v1in_));
@@ -246,6 +264,11 @@ void azrael_mobile_driver::control_thread()
 
         // std::cout << pwm1 << "," << pwm2 << "," << pwm3 << "," << pwm4 << "\n";
 
+        buffer_out[4] = pwm1 / (double)MAX_PWM_RANGE;
+        buffer_out[5] = pwm2 / (double)MAX_PWM_RANGE;
+        buffer_out[6] = pwm3 / (double)MAX_PWM_RANGE;
+        buffer_out[7] = pwm4 / (double)MAX_PWM_RANGE;
+
         softPwmWrite (PWM_pin_1,  pwm1) ;
         softPwmWrite (PWM_pin_2,  pwm2) ;
         softPwmWrite (PWM_pin_3,  pwm3) ;
@@ -255,7 +278,7 @@ void azrael_mobile_driver::control_thread()
         
         // time_sin = time_sin + (std::chrono::duration_cast<std::chrono::microseconds>(end_time - init_time).count() * 1e-6);
 
-        auto micros = 2000 - std::chrono::duration_cast<std::chrono::microseconds>(end_time - init_time).count();
+        auto micros = std::chrono::microseconds::rep(CONTROL_LOOP_DT * 1e6) - std::chrono::duration_cast<std::chrono::microseconds>(end_time - init_time).count();
         if(micros > 0)
         {
             std::this_thread::sleep_for(std::chrono::microseconds(micros));
