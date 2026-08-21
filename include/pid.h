@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdint.h>
+#include <cmath>
 
 // constexpr int ffw    = 0;
 constexpr int ffw    = 14;
@@ -22,7 +23,7 @@ class PID {
 
     double update_state() {
             _lock->lock();
-            double error = setpoint - abs(*curr_vel_pnt);
+            double error = setpoint - std::abs(*curr_vel_pnt);
             _lock->unlock();
             double ef = alpha * error + (1 - alpha) * old_ef;
             double derivative = (ef - old_ef) / Ts;
